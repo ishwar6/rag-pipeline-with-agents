@@ -7,6 +7,7 @@ from langchain.embeddings import OpenAIEmbeddings
 
 @dataclass
 class EmbeddingConfig:
+ 
     """Configuration container for embedding models.
 
     Parameters
@@ -25,11 +26,13 @@ class EmbeddingConfig:
         OpenAIEmbeddings
             Configured embedding model instance.
         """
+ 
         return OpenAIEmbeddings(model=self.model)
 
 
 @dataclass
 class VectorStoreConfig:
+ 
     """Configuration for persistent vector storage.
 
     Parameters
@@ -56,5 +59,6 @@ class VectorStoreConfig:
         Any
             Chroma collection instance tied to the configured directory and name.
         """
+ 
         client = Client(Settings(persist_directory=str(Path(self.persist_directory))))
         return client.get_or_create_collection(name=self.collection_name, embedding_function=embedding)

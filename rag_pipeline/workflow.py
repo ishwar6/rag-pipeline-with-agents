@@ -14,7 +14,8 @@ class RAGState(TypedDict, total=False):
 
 
 class RAGWorkflow:
-    """Main workflow graph orchestrating retrieval and reasoning.
+    """
+    Main workflow graph orchestrating retrieval and reasoning.
 
     Parameters
     ----------
@@ -60,6 +61,7 @@ class RAGWorkflow:
     def _build(self):
         graph = StateGraph(RAGState)
 
+        # --- Nodes ---
         def rewrite(state: RAGState) -> RAGState:
             state["rewritten"] = self.rewriter.run(state["query"])
             return state
@@ -69,7 +71,7 @@ class RAGWorkflow:
             return state
 
         def score_primary(state: RAGState) -> RAGState:
-            scores = [d["score"] for d in state["docs"]]
+            scores = [d.get("score", 0) for d in state["docs"]]
             state["confidence"] = sum(scores) / len(scores) if scores else 0
             return state
 
@@ -77,15 +79,16 @@ class RAGWorkflow:
             return "reason" if state["confidence"] >= self.threshold else "deep"
 
         def retrieve_secondary(state: RAGState) -> RAGState:
-            more = self.deep_retriever.retrieve(state["rewritten"], state.get("metadata"))
-            combined = {d["text"]: d for d in state["docs"]}
-            for doc in more:
+            more_docs = self.deep_retriever.retrieve(state["rewritten"], state.get("metadata"))
+            # Merge primary and secondary docs without duplicates
+            combined = {doc["text"]: doc for doc in state["docs"]}
+            for doc in more_docs:
                 combined.setdefault(doc["text"], doc)
             state["docs"] = list(combined.values())
             return state
 
         def score_secondary(state: RAGState) -> RAGState:
-            scores = [d["score"] for d in state["docs"]]
+            scores = [d.get("score", 0) for d in state["docs"]]
             state["confidence"] = sum(scores) / len(scores) if scores else 0
             if state["confidence"] < self.threshold:
                 state["fallback"] = True
@@ -106,6 +109,7 @@ class RAGWorkflow:
             state["answer"] = self.summarizer.run(state["answer"])
             return state
 
+        # --- Graph Wiring ---
         graph.add_node("rewrite", rewrite)
         graph.add_node("retrieve_primary", retrieve_primary)
         graph.add_node("score_primary", score_primary)
@@ -128,20 +132,7 @@ class RAGWorkflow:
         return graph.compile()
 
     def run(self, query: str, metadata: Optional[Dict[str, Any]] = None) -> str:
-        """Execute the graph for a user query.
-
-        Parameters
-        ----------
-        query: str
-            Raw user question.
-        metadata: dict, optional
-            Additional constraints for retrieval filtering.
-
-        Returns
-        -------
-        str
-            Final summarized answer produced by the workflow.
-        """
+        """Execute the graph for a user query."""
         history = self.memory.get()
         state: RAGState = {"query": query, "metadata": metadata or {}, "history": history}
         result = self.app.invoke(state)
