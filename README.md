@@ -14,3 +14,8 @@ A retrieval-augmented generation system using LangGraph and Chroma.
 2. Ingest documents: `python -m rag_pipeline.ingest`
 3. Create a `RAGWorkflow` instance and call `run` with a query
  
+
+## Ranked RAG Flow
+A simplified LangChain-based pipeline is available in `ranked_rag/`.
+It demonstrates document ranking with dense ranks, a chain-of-thought
+reasoning prompt, and a reflexive self-critique step.
